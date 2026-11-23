@@ -5,13 +5,13 @@
 删三类：
   ① code\\sketch_...\\build\\  —— Arduino 编译中间产物（elf 30MB + map 20MB + merged.bin 16MB + bin 2.2MB）
      删之前已经跑过 固件备份.py，当前固件 .bin 存在 backups\\固件\\ 里了 ✓，烧板子不用重新编译也能烧
-  ② 语音\\output_*.wav 等 —— TTS 每次请求都生成的临时语音（254 个，69MB）
+  ② 运行时\\output_*.wav 等 —— TTS 每次请求都生成的临时语音（254 个，69MB）
   ③ 缓存 —— __pycache__ / .pytest_cache / .ruff_cache / .coverage / .pytest_tmp
 
 保留：
-  · 语音\\music\\（6 个缓存歌曲，6MB）—— 演示时网络若不好，这是现成的）
-  · 语音\\access.log、链路日志.jsonl —— 诊断证据
-  · 语音\\chime.wav、mic_last.wav —— 运行时会自动重建，但太小，留着省事
+  · 运行时\\music\\（6 个缓存歌曲，6MB）—— 演示时网络若不好，这是现成的）
+  · 运行时\\access.log、链路日志.jsonl —— 诊断证据
+  · 运行时\\chime.wav、mic_last.wav —— 运行时会自动重建，但太小，留着省事
   · 所有 .md / 图片 / 提交表
 """
 import glob
@@ -35,7 +35,7 @@ for pat in ("output_*.wav", "output_x_*.wav", "output.wav", "output.mp3",
     targets_files += glob.glob(os.path.join(ROOT, "语音", pat))
 
 # 编译中间产物
-build = os.path.join(ROOT, "code", "sketch_oct8a_copy_20261008145732", "build")
+build = os.path.join(ROOT, "code", "firmware", "build")
 if os.path.isdir(build):
     targets_dirs.append(build)
 
@@ -47,7 +47,7 @@ for p in ("__pycache__", ".pytest_cache", ".ruff_cache", ".pytest_tmp", ".covera
     elif os.path.isfile(full):
         targets_files.append(full)
 for p in ("code/__pycache__", "code/server/__pycache__", "tests/__pycache__",
-          "tools/__pycache__", "code/sketch_oct8a_copy_20261008145732/__pycache__"):
+          "tools/__pycache__", "code/firmware/__pycache__"):
     full = os.path.join(ROOT, *p.split("/"))
     if os.path.isdir(full):
         targets_dirs.append(full)
@@ -114,9 +114,9 @@ print("")
 print(f"  清理后仓库体积 ≈ {human(left)}")
 
 keep = [
-    ("语音\\music", len(glob.glob(os.path.join(ROOT, "语音", "music", "*")))),
-    ("语音\\chime.wav", 1 if os.path.exists(os.path.join(ROOT, "语音", "chime.wav")) else 0),
-    ("语音\\access.log", 1 if os.path.exists(os.path.join(ROOT, "语音", "access.log")) else 0),
+    ("运行时\\music", len(glob.glob(os.path.join(ROOT, "语音", "music", "*")))),
+    ("运行时\\chime.wav", 1 if os.path.exists(os.path.join(ROOT, "语音", "chime.wav")) else 0),
+    ("运行时\\access.log", 1 if os.path.exists(os.path.join(ROOT, "语音", "access.log")) else 0),
     ("backups\\固件", len(glob.glob(os.path.join(ROOT, "backups", "固件", "*.bin")))),
 ]
 print("  该留的还在：")

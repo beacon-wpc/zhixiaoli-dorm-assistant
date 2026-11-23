@@ -2,7 +2,7 @@
 
 为什么需要（本会话真实踩到 4 次 ✗）：
   ① .env.bak 含真实密钥被提交；② 文档里把真实密钥前缀当 grep 例子；
-  ③ 转发文档被填上真 token 后又被提交；④ 语音\链路日志.jsonl（运行时日志）被提交。
+  ③ 转发文档被填上真 token 后又被提交；④ 运行时\链路日志.jsonl（运行时日志）被提交。
 前三次是"密钥"，第四次是"运行时产物" —— 所以护栏要**两类都查** ✓
 按《工程债偿还指南》第 8 条：**纪律靠机器，人只负责判断** ✓
 
@@ -29,12 +29,12 @@ RUNTIME = (
     r"\.jsonl$", r"\.log$",                   # 链路日志 / 访问日志
     r"\.wav$", r"\.mp3$", r"\.m4a$",          # 录音与音频缓存
     r"\.bak$",                                # 配置备份
-    r"^语音/",                                 # 整个音频目录都是运行时产物 ✓
+    r"^运行时/",                                 # 整个音频目录都是运行时产物 ✓
     # ⚠️ 2026-10-15 实测：**截图/照片里常含私人信息** ✗ ——
     #    `git add -A` 把 5 张报名截图（含 5 人的学号与手机号 ✓）顺手提交了 ✓，
     #    已撤销 + gc 清干净 ✓。**图片一律不进仓库** ✓，要展示就放网盘/单独发 ✓
     r"\.png$", r"\.jpg$", r"\.jpeg$", r"\.gif$", r"\.webp$", r"\.bmp$",
-    r"^比赛图片/", r"^图片/", r"^截图/",
+    r"^素材/素材\比赛图片/", r"^图片/", r"^截图/",
 )
 ALLOW = (r"\.env\.example$",)                 # 唯一允许入库的 .env 变体 ✓
 
@@ -63,7 +63,7 @@ if os.path.exists(ENV):
         if len(v) >= 8 and re.search(r"KEY|SECRET|TOKEN|PASSWORD", k.upper()):
             secrets.append((k.strip(), v))
 
-SECRETS_H = os.path.join(ROOT, "code", "sketch_oct8a_copy_20261008145732", "secrets.h")
+SECRETS_H = os.path.join(ROOT, "code", "firmware", "secrets.h")
 if os.path.exists(SECRETS_H):
     for line in open(SECRETS_H, encoding="utf-8", errors="ignore"):
         m = re.match(r'\s*#define\s+(\w*(?:KEY|SECRET|TOKEN|PASSWORD|PASS|PWD)\w*)\s+"([^"]{8,})"',
@@ -96,7 +96,7 @@ if rt_bad or sec_bad:
         print("  ② 暂存文件里出现了【运行时产物】（每次运行都会变、且夹带真实数据）：")
         for f in rt_bad:
             print("      " + f)
-        print("     处理：把它加进 .gitignore（已覆盖 *.db* / *.jsonl / *.log / *.wav / *.bak / 语音/ ✓）；")
+        print("     处理：把它加进 .gitignore（已覆盖 *.db* / *.jsonl / *.log / *.wav / *.bak / 运行时/ ✓）；")
         print("           已经误加的：git rm --cached <文件>")
     print("  确实要提交请用 --no-verify（不推荐）")
     print("")

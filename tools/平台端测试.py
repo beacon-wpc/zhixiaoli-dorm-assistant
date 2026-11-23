@@ -3,7 +3,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv(Path(__file__).resolve().parent / ".env")   # 读脚本旁边的 .env，别写死绝对路径
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")   # 读脚本旁边的 .env，别写死绝对路径
 
 # -*- coding: utf-8 -*-
 """平台端测试：只调用智小理平台的 API（和板子走的那条路完全一致），

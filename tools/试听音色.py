@@ -1,7 +1,7 @@
 """试听音色：一次生成所有候选发音人的样音，用耳朵挑 ✓
 
 用法：
-    E:\\Python\\python.exe tools\\试听音色.py             # 生成全部候选 → 语音\\试听音色\\
+    E:\\Python\\python.exe tools\\试听音色.py             # 生成全部候选 → 运行时\\试听音色\\
     E:\\Python\\python.exe tools\\试听音色.py --per 3     # 只生成 3 号（内部使用 ✓）
 
 为什么要有它：

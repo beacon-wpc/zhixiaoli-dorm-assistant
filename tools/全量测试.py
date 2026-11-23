@@ -3,7 +3,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv(Path(__file__).resolve().parent / ".env")   # 读脚本旁边的 .env，别写死绝对路径
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")   # 读脚本旁边的 .env，别写死绝对路径
 
 # -*- coding: utf-8 -*-
 """全量自测（自带临时服务端，不用你手动启动任何东西）
@@ -36,7 +36,7 @@ LOCAL = "http://127.0.0.1:5010"
 SERVER_PY = r"E:\天翼\code\run.py"
 ARDUINO_CLI = (r"E:\Arduino\Arduino IDE\resources\app\lib\backend"
                r"\resources\arduino-cli.exe")
-SKETCH = r"E:\天翼\code\sketch_oct8a_copy_20261008145732"
+SKETCH = r"E:\天翼\code\firmware"
 FQBN = ("esp32:esp32:esp32s3:UploadSpeed=921600,USBMode=hwcdc,FlashSize=16M,"
         "PartitionScheme=app3M_fat9M_16MB,DebugLevel=none,PSRAM=opi")
 BAIDU_KEY = os.environ["BAIDU_API_KEY"]
@@ -185,7 +185,7 @@ try:
     #    所以这里要**直接读项目根的 .env** 拿真实 token ✓
     token = ""
     try:
-        for _ln in open(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"),
+        for _ln in open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"),
                         encoding="utf-8"):
             if _ln.startswith("ZHIXIAOLI_API_TOKEN="):
                 token = _ln.split("=", 1)[1].strip()

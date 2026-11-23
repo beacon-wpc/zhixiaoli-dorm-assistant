@@ -120,7 +120,7 @@ def _check_token():
 # 安全性 ✓：这个页面本来就是【对外公开】的 ✓ 且不含任何密钥 ✓（已用提交护栏验证过 ✓）
 _WEB_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-    "给队友")
+    "文档", "给队友")
 
 # 2026-10-23：**只留队友这一份页面** ✓
 #   他 10-23 交的版本以我 10-22 那版为基准，修了四处真 bug（其中一处会把打码串写回库、覆盖原文）。

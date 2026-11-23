@@ -46,7 +46,7 @@ if not CLOUD_VERIFY:
     urllib3.disable_warnings()
 
 # ---------------- 目录与音频 ----------------
-AUDIO_DIR = os.environ.get("ZHIXIAOLI_AUDIO_DIR", r"E:\天翼\语音")
+AUDIO_DIR = os.environ.get("ZHIXIAOLI_AUDIO_DIR", r"E:\天翼\运行时")
 # 音频格式：wav（默认，aue=6，16kHz/单声道/16位 PCM）/ mp3（aue=3）
 TTS_FORMAT = os.environ.get("ZHIXIAOLI_TTS_FORMAT", "wav").lower()
 BAIDU_AUE = 6 if TTS_FORMAT == "wav" else 3

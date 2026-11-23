@@ -23,7 +23,7 @@ import time
 sys.stdout = __import__("io").TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 ROOT = r"E:\天翼"
-SKETCH = os.path.join(ROOT, "code", "sketch_oct8a_copy_20261008145732")
+SKETCH = os.path.join(ROOT, "code", "firmware")
 CLI = r"E:\Arduino\Arduino IDE\resources\app\lib\backend\resources\arduino-cli.exe"
 BACKUP_DIR = os.path.join(ROOT, "backups", "固件")
 

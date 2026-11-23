@@ -10,7 +10,7 @@
 用法：
     E:\\Python\\python.exe tools\\清空记忆.py                  # 只看会删什么（默认演练 ✓ 不删）
     E:\\Python\\python.exe tools\\清空记忆.py --yes            # 真的删 ✓
-    E:\\Python\\python.exe tools\\清空记忆.py --yes --backup   # 删之前先挪到 语音\\_清空备份_<时间>\\ ✓
+    E:\\Python\\python.exe tools\\清空记忆.py --yes --backup   # 删之前先挪到 运行时\\_清空备份_<时间>\\ ✓
 
 ⚠️ 只想清「已知信息」、**保留**历史事件 → 别用本工具 ✗，用接口：
     POST /v1/memory/clear  （需要 `Authorization: Bearer <token>`，token 在 `.env` ✓）
@@ -77,7 +77,7 @@ def main():
     if not yes:
         print("\n这是演练 ✓ 什么都没有删。要真删就加 --yes：")
         print("  E:\\Python\\python.exe tools\\清空记忆.py --yes")
-        print("  （想留个后路：再加 --backup，会先挪到 语音\\_清空备份_<时间>\\ ✓）")
+        print("  （想留个后路：再加 --backup，会先挪到 运行时\\_清空备份_<时间>\\ ✓）")
         return 0
 
     # ③ 真删（可选先备份）

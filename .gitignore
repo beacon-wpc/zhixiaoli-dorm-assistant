@@ -2,19 +2,19 @@
 secrets.h
 __pycache__/
 *.pyc
-语音/output.wav
-语音/output.mp3
-语音/mic_last.wav
-语音/access.log
-语音/music/
+运行时/output.wav
+运行时/output.mp3
+运行时/mic_last.wav
+运行时/access.log
+运行时/music/
 code/记忆.json
 数据/*.db
 数据/*.db-wal
 数据/*.db-shm
 _备份_重构前/
-_材料/
+素材/_材料/
 *.log
-语音/*.mp3
+运行时/*.mp3
 作品提交表_已填.docx
 作品提交表_已填.pdf
 # secrets: every .env variant, but keep the example tracked
@@ -29,13 +29,13 @@ _材料/
 *_已填token*.md
 *_已填*.md
 # runtime output dir (audio, logs) - never in git
-语音/
+运行时/
 # pytest 的临时工作目录（项目内，跑完自删 ✓）
 .pytest_tmp/
 
 # 比赛素材 / 截图 / 照片 —— 里面常有私人信息（学号/手机号/桌面）✗ 绝不入库 ✓
 # 2026-10-15 实测：报名系统截图被 git add -A 顺手提交过，已撤销并 gc ✓
-比赛图片/
+素材/比赛图片/
 *.png
 *.jpg
 *.jpeg
@@ -47,4 +47,4 @@ htmlcov/
 # 固件编译产物与备份（2026-10-22）
 # 几 MB 的二进制不进仓库 —— 真正的备份是 git 里的源码，随时能重新编译。
 backups/
-code/sketch_oct8a_copy_20261008145732/build/
+code/firmware/build/
