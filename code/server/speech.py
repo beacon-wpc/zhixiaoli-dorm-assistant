@@ -1,13 +1,16 @@
 """语音出入口：百度 TTS / edge-tts 兜底 / 百度 ASR（三者共用一份 access_token 缓存）。"""
 import asyncio
+import hashlib
 import os
+import shutil
+import threading
 import time
 
 import requests
 
 from . import trace
-from .config import (BAIDU_API_KEY, BAIDU_AUE, BAIDU_CHUNK, BAIDU_SECRET_KEY,
-                     TTS_EDGE_RATE, TTS_EDGE_VOICE, TTS_ENGINE,
+from .config import (AUDIO_DIR, BAIDU_API_KEY, BAIDU_AUE, BAIDU_CHUNK,
+                     BAIDU_SECRET_KEY, TTS_EDGE_RATE, TTS_EDGE_VOICE, TTS_ENGINE,
                      TTS_PER, TTS_PIT, TTS_SPD, TTS_VOL)
 
 # 百度 access_token 缓存（有效期 30 天）—— 模块级可变状态，只在本模块内使用
@@ -133,18 +136,113 @@ def _engine_chain():
 
 
 def synthesize(text, out_path):
-    """按配置的【顺序】逐个引擎试，返回实际成功的那一个名；全部失败则抛异常。"""
+    """按配置的【顺序】逐个引擎试，返回实际成功的那一个名；全部失败则抛异常。
+
+    2026-11-24 加：**合成结果按文本缓存**（见下面 TTS 缓存那节）。
+    链路日志实测 TTS p50 1.6 秒、p90 2.3 秒，是仅次于平台的第二慢环节；
+    而我们的固定话术（报修/请假/自习室/校车/课表模板）每天被重复合成无数次 ✗。
+    """
+    if _tts_cache_get(text, out_path):
+        print("[TTS] 缓存命中（省一次合成）", flush=True)
+        return "cache"
     engines = _engine_chain()
     last_err = None
     for fn in engines:
         try:
             fn(text, out_path)
+            _tts_cache_put(text, out_path)
             return fn.__name__
         except Exception as e:  # noqa: BLE001
             last_err = e
             print(f"[TTS] {fn.__name__} 失败: "
                   f"{type(e).__name__}: {e}", flush=True)
     raise RuntimeError(f"所有 TTS 引擎都失败，最后一个错误: {last_err}")
+
+
+# ================= TTS 缓存（2026-11-24） =================
+# 为什么要：TTS 是第二慢的一环（p50 1.6s），而回答里大量是**固定模板句**
+#   （「好的，已经帮你登记报修啦…」、校车时刻、课表模板），同一句被合成上百次 ✗
+# 只缓存"文本 → wav"，命中就复制一份返回，省掉整次网络合成 ✓
+# 三条硬规矩：
+#   ① 键里必须带**音色/语速/引擎**指纹 —— 否则改了语速还听到旧音色 ✓
+#   ② 写入用 tmp + os.replace（原子）—— 多线程同时命中不会读到半个文件 ✓
+#   ③ 有上限（默认 300 条，按 mtime LRU 淘汰）—— 不能把磁盘塞满 ✓
+_TTS_CACHE_DIR = os.path.join(AUDIO_DIR, "tts_cache")
+_TTS_CACHE_MAX = int(os.environ.get("ZHIXIAOLI_TTS_CACHE_MAX", "300"))
+_TTS_CACHE_MIN_BYTES = 1000          # 太小的是失败产物，别进缓存
+_tts_cache_lock = threading.Lock()
+
+
+def _tts_cache_enabled() -> bool:
+    return str(os.environ.get("ZHIXIAOLI_TTS_CACHE", "1")).lower() not in ("0", "false", "off", "no")
+
+
+def _tts_fingerprint() -> str:
+    """音色/语速/引擎变了，缓存必须失效。"""
+    return "|".join(str(x) for x in (
+        TTS_ENGINE, TTS_PER, TTS_SPD, TTS_PIT, TTS_VOL,
+        TTS_EDGE_VOICE, TTS_EDGE_RATE, BAIDU_AUE,
+    ))
+
+
+def _tts_cache_path(text: str) -> str:
+    raw = _tts_fingerprint() + "\x00" + (text or "")
+    h = hashlib.sha1(raw.encode("utf-8")).hexdigest()[:20]
+    return os.path.join(_TTS_CACHE_DIR, h + ".wav")
+
+
+def _tts_cache_get(text: str, out_path: str) -> bool:
+    if not _tts_cache_enabled() or not text:
+        return False
+    src = _tts_cache_path(text)
+    try:
+        if os.path.getsize(src) < _TTS_CACHE_MIN_BYTES:
+            return False
+    except OSError:
+        return False
+    try:
+        shutil.copyfile(src, out_path)
+        os.utime(src, None)          # 命中即"最近用过"，别被 LRU 淘汰
+        return True
+    except OSError:
+        return False
+
+
+def _tts_cache_put(text: str, src_path: str) -> None:
+    if not _tts_cache_enabled() or not text:
+        return
+    try:
+        if os.path.getsize(src_path) < _TTS_CACHE_MIN_BYTES:
+            return
+    except OSError:
+        return
+    try:
+        os.makedirs(_TTS_CACHE_DIR, exist_ok=True)
+        dst = _tts_cache_path(text)
+        tmp = dst + ".tmp"
+        with _tts_cache_lock:
+            shutil.copyfile(src_path, tmp)
+            os.replace(tmp, dst)     # 原子替换：谁都不会读到半个文件
+        _tts_cache_trim()
+    except OSError as e:
+        print(f"[TTS] 写缓存失败（不影响播报）：{e}", flush=True)
+
+
+def _tts_cache_trim() -> None:
+    """超过上限就按最久未用淘汰。"""
+    try:
+        items = [(e.path, e.stat().st_mtime)
+                 for e in os.scandir(_TTS_CACHE_DIR) if e.name.endswith(".wav")]
+    except OSError:
+        return
+    if len(items) <= _TTS_CACHE_MAX:
+        return
+    items.sort(key=lambda x: x[1])
+    for path, _ in items[: len(items) - _TTS_CACHE_MAX]:
+        try:
+            os.remove(path)
+        except OSError:
+            pass
 
 
 # ================= ASR：百度短语音识别（标准版） =================
