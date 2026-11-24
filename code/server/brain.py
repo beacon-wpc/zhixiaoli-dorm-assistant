@@ -15,7 +15,7 @@ from .config import (
     BRAIN, CLOUD_INPUT_MAX, CLOUD_KEY, CLOUD_MULTITURN, CLOUD_TIMEOUT,
     CLOUD_URL, CLOUD_USER, CLOUD_VERIFY,
 )
-from . import alarm, course_qa, reminders, trace, weather
+from . import alarm, bus, course_qa, reminders, trace, weather
 from .music import MUSIC_ENABLE, handle_music, make_tts, music_request
 
 # ================= 大脑 1：智小理平台（Dify 接口） =================
@@ -466,6 +466,16 @@ def handle_query(query):
         if text:
             print(f"[课表] {text}", flush=True)
             return _finish(query, text, "NONE", "本地课表")
+
+    # 3.83) 校车 → 本地静态时刻表（2026-11-24 ✓）
+    #    原来走平台：正常多等 4.6 秒；平台检索一超时（i/o timeout）整句 400，
+    #    兜底只能说「我在呢，有什么可以帮你的吗？」—— 答非所问 ✗
+    #    时刻表整学期不变，放本地既快又稳，还能写测试钉住 ✓
+    if bus.looks_like(query):
+        text = bus.answer(query)
+        if text:
+            print(f"[校车] {text}", flush=True)
+            return _finish(query, text, "NONE", "本地校车")
 
     # 3.86) 定闹钟 → 本地解析（2026-10-22 ✓ 一次性闹钟 ✓ 到点由板子播报 ✓）
     if alarm.looks_like_alarm(query):
