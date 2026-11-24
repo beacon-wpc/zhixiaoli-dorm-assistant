@@ -136,8 +136,8 @@ def web_index():
     if not os.path.exists(_WEB_PAGE):
         return jsonify({
             "ok": False,
-            "error": "网页文件不在（给队友/网页_2026-10-22_含课表.html）",
-            "hint": "API 照常可用：/v1/health  /v1/chat  /v1/board",
+            "error": "网页文件不在：文档/给队友/网页_2026-10-22_含课表.html",
+            "hint": "网页界面由队友单独维护、不随仓库发布；API 照常可用：/v1/health  /v1/chat  /v1/board",
         }), 404
     from flask import send_file
     return send_file(_WEB_PAGE)
