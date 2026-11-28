@@ -4,8 +4,9 @@
   网页要"改音量" ✓ 而 `/v1/device/volume` 需要 token ✗（网页按规矩不带 token ✓）
   → 开了免 token 的 `POST /v1/board/volume` ✓（网页同学论证成立：音量确实不敏感 ✓）
   ⚠️ 但那是【公开的写接口】✗ → 最坏情况不是隐私泄露，而是**现场把板子调哑** ✗✗
-     （固件实测：vol=5 → -52dB 几乎无声 ✗ ｜ vol=15 → -13dB ✓ ｜ vol=21 → 0dB ✓）
-  → 所以限制 **10~21** ✓；下面这几条测试就是钉住这条边界 ✓
+     （固件实测：vol=0 → 静音 ｜ vol=5 → -52dB 几乎无声 ｜ vol=15 → -13dB ✓ ｜ vol=21 → 0dB ✓）
+  2026-11-26 用户要求「网页音量从 0 开始」→ 下限从 10 放到 **0~21** ✓
+     （代价：网页可以把板子拖到静音 ✗ —— 演示前记得推回 21 ✓）
 """
 from server import app as A, device
 
@@ -35,16 +36,22 @@ def test_public_volume_requires_no_token(monkeypatch):
     assert calls["set"] == 18
 
 
-def test_public_volume_clamps_to_safe_range(monkeypatch):
-    """⭐⭐ 最重要的一条：**不许把板子调哑** ✗（下限 10 ✓）"""
+def test_public_volume_allows_zero(monkeypatch):
+    """⭐ 0 就是 0（2026-11-26 起）：0 = 静音，网页能从 0 开始拖 ✓"""
+    c, calls = _client(monkeypatch)
+    j0 = c.post("/v1/board/volume", json={"volume": 0}).get_json()
+    assert calls["set"] == 0, "0 必须原样下发 ✗ —— 否则网页拖到底没反应"
+    assert j0["ok"] is True and j0["volume"] == 0
+    assert not j0.get("note"), "0 在范围内，不该出现夹取提示"
+
+
+def test_public_volume_clamps_out_of_range(monkeypatch):
+    """越界仍要夹：负数 → 0，超过 21 → 21，并且**明确告诉网页** ✓"""
     c, calls = _client(monkeypatch)
 
-    j0 = c.post("/v1/board/volume", json={"volume": 0}).get_json()
-    assert calls["set"] == 10, "0 必须被夹到 10 ✗ —— 否则现场就哑了 ✗✗"
-    assert j0["note"] and "10~21" in j0["note"], "夹取要告诉网页，别静默改值 ✓"
-
-    j9 = c.post("/v1/board/volume", json={"volume": 9}).get_json()
-    assert calls["set"] == 10 and j9["volume"] == 10
+    jn = c.post("/v1/board/volume", json={"volume": -5}).get_json()
+    assert calls["set"] == 0 and jn["volume"] == 0
+    assert jn.get("note") and "0~21" in jn["note"], "夹取要告诉网页，别静默改值 ✓"
 
     j99 = c.post("/v1/board/volume", json={"volume": 99}).get_json()
     assert calls["set"] == 21 and j99["volume"] == 21

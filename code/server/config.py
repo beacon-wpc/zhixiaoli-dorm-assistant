@@ -84,11 +84,13 @@ _HOST_IS_LOCAL_ALIAS = _CONFIGURED_HOST in ("127.0.0.1", "localhost", "0.0.0.0")
 if not _HOST_IS_LOCAL_ALIAS:
     _ips = _local_ips()
     if _ips and _CONFIGURED_HOST not in _ips:
+        # 优先热点网段：板子固定连笔记本热点，给它校园网地址它够不着（2026-11-27 实测踩到）
+        _pick = next((i for i in _ips if i.startswith("192.168.137.")), _ips[0])
         print(f"[配置] ⚠️ ZHIXIAOLI_PUBLIC_HOST = {_CONFIGURED_HOST} 不在本机地址里 ✗", flush=True)
-        print(f"[配置]    本机实际地址：{', '.join(_ips)} ✓ → 已自动改用 {_ips[0]} ✓", flush=True)
-        print(f"[配置]    ⚠️ 请顺手把 .env 里那一行改成 {_ips[0]} ✓"
+        print(f"[配置]    本机实际地址：{', '.join(_ips)} ✓ → 已自动改用 {_pick} ✓", flush=True)
+        print(f"[配置]    ⚠️ 请顺手把 .env 里那一行改成 {_pick} ✓"
               f"（文档/队友那边也要同步 ✓ 否则他们照着旧地址会连不上 ✗）", flush=True)
-        _CONFIGURED_HOST = _ips[0]
+        _CONFIGURED_HOST = _pick
 
 PUBLIC_HOST = _CONFIGURED_HOST
 PUBLIC_PORT = int(os.environ.get("ZHIXIAOLI_PUBLIC_PORT", "5000"))

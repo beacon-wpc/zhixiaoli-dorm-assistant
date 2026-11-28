@@ -213,8 +213,16 @@ def _jobs_prune():
                 _VOICE_JOBS.pop(k, None)
 
 
-def _voice_job_run(job_id, wav):
+def _voice_job_run(job_id, wav, base_url=""):
+    """后台线程跑一遍语音管线。
+
+    ⚠️ base_url 必须由调用方传进来（2026-11-27 修）：
+       线程里没有 Flask 请求上下文 → trace.base_url() 会回落到 PUBLIC_HOST
+       → 板子拿到校园网地址、自己够不着 → 串口打"播放失败"✗
+    """
     try:
+        if base_url:
+            trace.set_base(base_url)      # 让音频地址跟着"板子用的是哪个地址"走
         result = _voice_pipeline(wav)
         state, payload = "done", result
     except Exception as e:
@@ -244,7 +252,9 @@ def voice():
         _VOICE_JOBS[job_id] = {"t": time.time(), "state": "working",
                                "result": None, "done": None, "bytes": len(wav)}
     _jobs_prune()
-    threading.Thread(target=_voice_job_run, args=(job_id, wav), daemon=True).start()
+    threading.Thread(target=_voice_job_run,
+                     args=(job_id, wav, request.host_url),
+                     daemon=True).start()
     print(f"[ASR] 受理 {job_id}（{len(wav)} 字节），后台开始识别 ✓", flush=True)
     return jsonify({"ok": True, "state": "accepted", "id": job_id,
                     "poll": f"/v1/voice/result?id={job_id}"}), 200
@@ -340,12 +350,12 @@ def board_volume_public():
     ⭐ 为什么敢免 token：网页同学的论证成立 ✓ —— 音量确实不像
        「记忆 / 个人信息」那样敏感 ✓（它不泄露任何内容 ✓ 只影响响度 ✓）
 
-    ⚠️ 但**必须加边界** ✗，因为这是个【公开的写接口】✓：
-       任何能打开这个页面的人都能调它 ✓ —— 最坏情况不是隐私泄露 ✗
-       而是【演示现场把板子弄哑】✗✗
-       （固件实测音量曲线：vol=5 → -52dB 几乎无声 ✗ ｜ vol=15 → -13dB ✓ ｜ vol=21 → 0dB ✓）
-       → 所以**只允许 10~21** ✓：最坏只是"变小声"✓ 不会哑 ✗✓（10 ≈ -33dB，仍听得清 ✓）
-       真要更小或静音 → 用**带 token** 的 `/v1/device/volume` ✓（那是管理接口 ✓）
+    ⚠️ 边界：**0~21**（2026-11-26 改，用户要求网页能从 0 开始拖）
+       固件实测音量曲线：vol=0 → 静音 ✗ ｜ vol=5 → -52dB 几乎无声 ｜
+                        vol=15 → -13dB ✓ ｜ vol=21 → 0dB ✓
+       以前下限是 10（怕演示现场被调哑）；现在允许拖到 0 = **静音**。
+       → 提醒：**演示前把音量推到 21**，别把 0 存进 NVS（重启后仍静音）。
+       真要精细控制仍可用**带 token** 的 `/v1/device/volume` ✓（管理接口）✓
 
     与 `/v1/board` 风格一致 ✓：失败也返回 200 + `ok:false` ✓ 网页不用 try/catch ✓
     """
@@ -354,9 +364,9 @@ def board_volume_public():
         want = int(data.get("volume"))
     except (TypeError, ValueError):
         return jsonify({"ok": False, "volume": None, "steps": 21,
-                        "error": "volume 必须是 10~21 的整数"}), 200
+                        "error": "volume 必须是 0~21 的整数"}), 200
 
-    v = max(10, min(21, want))
+    v = max(0, min(21, want))
     r = device.board_volume_set(v)
     out = {"ok": bool(r.get("ok")), "volume": v, "steps": 21}
     if r.get("ok"):
@@ -367,7 +377,7 @@ def board_volume_public():
     else:
         out["error"] = r.get("error", "板子没响应")
     if v != want:
-        out["note"] = f"已夹到安全区间 10~21（你给的是 {want}）"     # 网页可原样显示 ✓
+        out["note"] = f"已夹到 0~21（你给的是 {want}）"     # 网页可原样显示 ✓
     # 每次改音量都留痕 ✓（现场出问题时能回看是谁在什么时候调的 ✓）
     trace.log("board_volume", want=want, set=v, ok=out["ok"])
     return jsonify(out), 200
@@ -384,7 +394,7 @@ def board_public():
       · **免 token** ✓（纯只读 ✓）
       · **只回白名单字段** ✓：绝不回板子 IP ✗、绝不回 profile（姓名/房号）✗、绝不回原始异常 ✗
     ⚠️ 2026-10-15 同日更新 ✗：**改音量**后来也开了免 token 的 `POST /v1/board/volume` ✓
-      （网页同学的诉求成立 ✓ 音量确实不敏感 ✓）—— 但**限制在 10~21** ✗，免得现场被调哑 ✓
+      （网页同学的诉求成立 ✓ 音量确实不敏感 ✓）—— 边界 **0~21**（2026-11-26 起 0 = 静音也允许 ✓）
       **写 profile、读写记忆仍然只在带 token 的接口里** ✓
     """
     st = device.board_status(timeout=1.5)
