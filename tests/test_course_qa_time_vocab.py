@@ -131,3 +131,44 @@ def test_finished_only_when_all_today_passed():
     late = dt.datetime(2026, 11, 23, 23, 0, 0)        # 第 13 周周一 23:00，08:30 那节已过
     got = course_qa.answer("今天有课吗", late)
     assert "课上完了" in got
+
+# ---------- 整周概览（2026-11-26 补）----------
+
+def test_week_scope_words_parsed():
+    assert course_qa._parse_week_scope("这周有课吗") == 0
+    assert course_qa._parse_week_scope("下周有课吗") == 1
+    assert course_qa._parse_week_scope("上周有课吗") == -1
+    assert course_qa._parse_week_scope("第14周有课吗") is None
+
+
+def test_whole_week_overview_not_today():
+    """问「第 14 周」不指定星期几 → 给整周概览，不能说「第 14 周今天」。"""
+    got = course_qa.answer("第14周有课吗", NOW)
+    assert "第 14 周有" in got
+    assert "今天" not in got
+    assert "共 6 节" in got          # 假课表第 14 周：周一 2 节 + 周三 4 节
+    assert "2 天有课" in got
+    assert "最早一节是周一" in got
+
+
+def test_current_week_uses_this_week():
+    got = course_qa.answer("这周有课吗", NOW)     # NOW 是第 13 周，假课表 13 周只有周一那一节
+    assert "第 13 周" in got
+
+
+def test_empty_week_says_no_class_this_week():
+    """第 12 周假课表里没有课 → 「整周没课」。"""
+    got = course_qa.answer("第12周有课吗", NOW)
+    assert "整周没课" in got
+
+
+def test_next_week_shifts_by_one():
+    got = course_qa.answer("下周有课吗", NOW)
+    assert "第 14 周" in got
+
+
+def test_week_overview_does_not_trigger_when_weekday_given():
+    """「第 14 周周五」还是要按天答，不能变成整周概览。"""
+    got = course_qa.answer("第14周周五有什么课", NOW)
+    assert "周五" in got and "共" not in got
+

@@ -1,4 +1,4 @@
-"""语音出入口：百度 TTS / edge-tts 兜底 / 百度 ASR（三者共用一份 access_token 缓存）。"""
+"""语音出入口：百度 TTS 兜底/ edge-tts / 百度 ASR（三者共用一份 access_token 缓存）。"""
 import asyncio
 import hashlib
 import os

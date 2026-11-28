@@ -40,6 +40,9 @@ _PART_WORDS = (
     ("上午", 0, 12), ("早上", 0, 12), ("中午", 10, 14),
     ("下午", 12, 18), ("傍晚", 16, 19), ("晚上", 17, 24),
 )
+# 「整周」类问法：这周 / 本周 / 下周 / 上周
+_WEEK_SCOPE = (("这周", 0), ("本周", 0), ("下周", 1), ("上周", -1))
+
 _CN_DIGIT = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5,
              "六": 6, "七": 7, "八": 8, "九": 9, "十": 10, "两": 2}
 
@@ -164,6 +167,29 @@ def _day_label(query: str, day, now: datetime) -> str:
     return f"周{timetable.WEEKDAY_NAMES[day.isoweekday() - 1]}"
 
 
+def _parse_week_scope(query: str):
+    """「这周/下周/上周」→ 相对当前周偏移；没有返回 None。"""
+    q = query or ""
+    for word, off in _WEEK_SCOPE:
+        if word in q:
+            return off
+    return None
+
+
+def _week_overview(items, settings, week_no: int):
+    """某一周的概览：(天列表, 总节数, 第一节)。整天没课返回 None。"""
+    days = []
+    total = 0
+    for wd in range(1, 8):
+        got = _courses_on(items, settings, wd, week_no)
+        if got:
+            days.append((wd, len(got), got[0]))
+            total += len(got)
+    if not days:
+        return None
+    return days, total, days[0][2]
+
+
 def _next_course(items, settings, now: datetime):
     """从现在起最近的一节课：(日期, 课程, 开始钟点) 或 None。"""
     week1 = settings["week1_monday"]
@@ -198,6 +224,27 @@ def answer(query: str, now: datetime | None = None) -> str | None:
         when = "今天" if day == now.date() else _day_label(q, day, now)
         return (f"下一节是{when} {hhmm} 的{course.get('name', '课')}，"
                 f"在{course.get('venue', '教室')}。")
+
+    # 2026-11-26 补：**整周**问法（这周 / 下周 / 第 N 周，但没问哪一天）
+    week_scope = _parse_week_scope(q)
+    only_week = (
+        (week_scope is not None or _parse_week(q) is not None)
+        and not _WEEKDAY_RE.search(q)
+        and not any(w in q for w in ("今天", "明天", "后天", "昨天"))
+    )
+    if only_week:
+        base_week = _week_no(settings["week1_monday"], now.date())
+        week_no = (base_week + week_scope) if week_scope is not None else _parse_week(q)
+        got = _week_overview(items, settings, week_no)
+        if not got:
+            return f"第 {week_no} 周整周没课。"
+        days, total, first = got
+        day_part = "、".join(
+            f"周{timetable.WEEKDAY_NAMES[wd - 1]} {n} 节" for wd, n, _ in days)
+        first_part = (f"最早一节是周{timetable.WEEKDAY_NAMES[first['weekday'] - 1]}"
+                      f" {first['_start']} 的{first.get('name', '课')}。")
+        return (f"第 {week_no} 周有 {len(days)} 天有课，共 {total} 节："
+                f"{day_part}。{first_part}")
 
     # 2026-11-24 补：周次 / 节次 / 半天
     week_override = _parse_week(q)

@@ -89,9 +89,18 @@ _WEEKDAY_WORDS = {"周一": 1, "周二": 2, "周三": 3, "周四": 4,
 _WEEKDAY_NAMES = ("周一", "周二", "周三", "周四", "周五", "周六", "周日")
 
 
+# 「没直说是校车、但明显在问车」的说法：提了校区 + 提了车/班的词
+_PLACES = ("两江", "花溪", "杨家坪")
+_TRANSPORT = ("车", "班", "几点", "最早", "最晚", "末班", "首班",
+              "有没有", "还有", "发车", "开车", "往返", "过去")
+
+
 def looks_like(query: str) -> bool:
     q = query or ""
-    return any(w in q for w in _WORDS)
+    if any(w in q for w in _WORDS):
+        return True
+    # 2026-11-26 补：「明天去两江的车」这类不含"校车"二字，以前会漏到平台（15 秒才回退）
+    return any(p in q for p in _PLACES) and any(t in q for t in _TRANSPORT)
 
 
 def _direction(query: str):

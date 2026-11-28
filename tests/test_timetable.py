@@ -200,3 +200,28 @@ def test_parse_real_pdf():
     assert len(got) == 4
     assert "线性代数" in got[0]["say"]
     assert got[0]["at"] == datetime(2026, 10, 21, 8, 10)
+
+# ---------- 2026-11-26：播报稿按「今天 / 明天 / 后天」说 ----------
+
+def test_make_say_today():
+    now = datetime(2026, 11, 30, 8, 5)
+    begin = datetime(2026, 11, 30, 8, 30)
+    assert timetable.make_say("中国近现代史纲要", "弘远楼B0119", begin, 20, now=now) == \
+        "今天你有中国近现代史纲要，在弘远楼B0119，08:30 开始"
+
+
+def test_make_say_tomorrow_and_day_after():
+    now = datetime(2026, 11, 30, 8, 5)
+    assert "明天" in timetable.make_say("排球", "两江操场1", datetime(2026, 12, 1, 10, 30), 20, now=now)
+    assert "后天" in timetable.make_say("排球", "两江操场1", datetime(2026, 12, 2, 10, 30), 20, now=now)
+
+
+def test_expand_uses_today_wording():
+    """expand() 出来的提醒应该带「今天」，而不是「20 分钟后」。"""
+    items = [{"weekday": 1, "period": 1, "name": "测试课", "venue": "A101", "weeks": [14]}]
+    got = timetable.expand(items, datetime(2026, 8, 31), early_minutes=20,
+                           since=datetime(2026, 11, 30, 8, 5),
+                           until=datetime(2026, 12, 2, 0, 0))
+    assert got and got[0]["say"].startswith("今天你有测试课")
+    assert "分钟后" not in got[0]["say"]
+

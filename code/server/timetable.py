@@ -146,9 +146,21 @@ def weekday_date(week1_monday, weekday, week_no):
     return week1_monday + timedelta(days=(week_no - 1) * 7 + (weekday - 1))
 
 
-def make_say(name, venue, begin, early_minutes):
-    """播报稿。例：20 分钟后你有线性代数[理工]，在弘远楼B0321，08:30 开始"""
+def make_say(name, venue, begin, early_minutes, now=None):
+    """播报稿。
+
+    2026-11-26 改：以前是「20 分钟后你有…」，现在按"今天 / 明天 / 后天"说
+        → 「今天你有线性代数[理工]，在弘远楼B0321，08:30 开始」
+    为什么改：20 分钟这个数字和下面那行"还有 5 分钟"重复，而且课可能在后天。
+    now 不传时退回旧说法（保持老调用不出错）。
+    """
     where = f"在{venue}，" if venue else ""
+    if now is not None:
+        days = (begin.date() - now.date()).days
+        when = ("今天" if days <= 0 else
+                "明天" if days == 1 else
+                "后天" if days == 2 else f"{days} 天后")
+        return f"{when}你有{name}，{where}{begin.strftime('%H:%M')} 开始"
     return (f"{early_minutes} 分钟后你有{name}，{where}"
             f"{begin.strftime('%H:%M')} 开始")
 
@@ -177,7 +189,7 @@ def expand(items, week1_monday, early_minutes=DEFAULT_EARLY_MINUTES,
             out.append({
                 "at": at,
                 "begin": begin,
-                "say": make_say(it.get("name", ""), it.get("venue", ""), begin, early_minutes),
+                "say": make_say(it.get("name", ""), it.get("venue", ""), begin, early_minutes, now=since),
                 "kind": "class",
             })
     out.sort(key=lambda x: x["at"])

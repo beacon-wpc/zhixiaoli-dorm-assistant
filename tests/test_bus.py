@@ -152,3 +152,22 @@ def test_friday_asks_saturday_uses_saturday_table():
     assert got.startswith("明天")
     assert "16:00" not in got and "06:50" in got
 
+# ---------- 2026-11-26：不含"校车"二字、但明显在问车 ----------
+
+def test_recognises_bus_without_the_word_xiaoche():
+    """「明天去两江的车」这类：提了校区 + 提了车/班，就该由本地接住。
+
+    以前会漏到平台 —— 平台慢的时候要等 15 秒超时才回退 ✗
+    """
+    assert bus.looks_like("明天去两江的车") is True
+    assert bus.looks_like("回花溪还有几点的车") is True
+    assert bus.looks_like("从两江走最晚几点") is True
+    assert bus.answer("明天去两江的车") is not None
+
+
+def test_does_not_hijack_other_questions_about_the_campus():
+    """提了校区但不是在问车 → 别抢；否则课表/天气类问题会被校车模块吞掉 ✗"""
+    assert bus.looks_like("两江有课吗") is False
+    assert bus.looks_like("两江校区怎么样") is False
+    assert bus.looks_like("去两江") is False
+
